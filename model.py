@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib import animation
+from matplotlib.widgets import Slider
 
 neighbors = [(0,1), (1,1), (1,0), (-1,0), (-1,-1), (0,-1), (-1,1), (1, -1)]
 EMPTY, TREE, ONFIRE = 0,1,2
@@ -55,9 +56,33 @@ grid[1:sizey -1, 1:sizex-1] = np.random.random(size=(sizey-2, sizex-2)) < init_c
 # plot the grid
 fig = plt.figure(figsize=(12.8, 9.6)) #temp size
 ax = fig.add_subplot(111)
+# create room for a slider
+fig.subplots_adjust(bottom=0.15)
+# create sliders for p and f
+paxslider = fig.add_axes((0.25, 0.1, 0.50, 0.03))
+pslider = Slider(ax=paxslider, label="p", valmin=0.00, valmax=0.1, valinit=0.05)
+faxslider = fig.add_axes((0.25, 0.05, 0.50, 0.03))
+fslider = Slider(ax=faxslider, label="f", valmin=0.00, valmax=0.001, valinit=0.0001)
+
 ax.set_axis_off()
 im = ax.imshow(grid, cmap, norm=norm)
 
+
+# STEP 4: ADD SLIDERS OUUUU - SMASH KABASH ALL DONE
+# update the sliders
+def update_p(val):
+    global p
+    p = pslider.val
+    fig.canvas.draw_idle()
+
+pslider.on_changed(update_p)
+
+def update_f(val):
+    global f
+    f = fslider.val
+    fig.canvas.draw_idle()
+
+fslider.on_changed(update_f)
 
 
 # STEP 3: SET UP THE ANIMATION AHH
@@ -72,4 +97,3 @@ interval = 100
 anim = animation.FuncAnimation(fig, animate, interval=interval, frames=200)
 # YIPPEE IT WORKED!!!AHHH
 plt.show()
-

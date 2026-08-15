@@ -7,20 +7,6 @@ from enum import IntEnum, Enum
 
 # consts
 neighbors = [(0,1), (1,1), (1,0), (-1,0), (-1,-1), (0,-1), (-1,1), (1, -1)]
-"""
-each quadrant corresponds to a quarter of the degree circle, 
-the neighbors inside that quadrants are the trees that are most likely to pass along the burn
-
-QUAD1 = 0 - 89
-QUAD2 = 90 - 179
-QUAD3 = 180 - 269
-QUAD4 = 270 - 359
-"""
-class nbhood(Enum):
-    QUAD1 = [(0,-1), (-1,-1), (-1, 0)]
-    QUAD2 = [(-1, 0), (-1, 1), (0, 1)]
-    QUAD3 = [(1,0), (1,1), (0,1)]
-    QUAD4 = [(0,-1), (1, -1), (1,0)]
 
 class Stages(IntEnum):
     EMPTY = 0
@@ -33,7 +19,6 @@ class Stages(IntEnum):
 
 #  color list and map
 color_list = ["#400f15", "#4A6E1A", "#5FCA07", "#1fc506", "#ff7429"]
-#  "#578817", "#489707", "#1fc506"
 cmap = colors.ListedColormap(color_list)
 boundaries = [0,1,2,3,4,5]
 norm = colors.BoundaryNorm(boundaries, cmap.N)
@@ -109,38 +94,33 @@ def assign_fire_with_wind(square, oldgrid, newgrid, angle):
     # get current coordinates
     y, x = square[0], square[1]
     current_tree_cover = newgrid[y,x]
-    quads = find_quads(angle)
-    most_likely, somewhat_likely, least_likely = quads[0], quads[1], quads[2]
-    for ny, nx in most_likely.value:
-        if oldgrid[y+ny, x+nx] == Stages.ONFIRE:
-            # 1.0 chance of spread
-            return Stages.ONFIRE
-
-    for quad in somewhat_likely:
-        for ny, nx in quad.value:
-            if oldgrid[y+ny, x+nx] == Stages.ONFIRE and np.random.random() <= 0.5:
-                # decrease probability of spread to 0.7 percent
-                return Stages.ONFIRE
-    
-    for ny, nx in least_likely.value:
-        if oldgrid[y+ny, x+nx] == Stages.ONFIRE and np.random.random() <= 0.1:
-            return Stages.ONFIRE
-    
+    nb_percents = find_percents(angle)
+    for entry in nb_percents:
+        if oldgrid[y+entry[0][0], x+entry[0][1]] == Stages.ONFIRE and np.random.random() <= entry[1]:
+            return Stages.ONFIRE    
     return current_tree_cover
 
 
 
 
 # get the quadrants that will impact the current square the most and less so
-def find_quads(angle):
-    if angle >= 0 and angle < 90:
-        return (nbhood.QUAD1, [nbhood.QUAD2, nbhood.QUAD4], nbhood.QUAD3)
-    elif angle >= 90 and angle < 180:
-        return (nbhood.QUAD2, [nbhood.QUAD1, nbhood.QUAD3], nbhood.QUAD4)
-    elif angle >= 180 and angle < 270:
-        return (nbhood.QUAD3, [nbhood.QUAD2, nbhood.QUAD4], nbhood.QUAD1)
+def find_percents(angle):
+    if angle > 338 or angle <= 23:
+        return [((0,-1), 1.0), ((1,-1), 0.6), ((-1,-1), 0.6), ((1,0), 0.4), ((-1,0), 0.4), ((1,1), 0.2), ((-1,1), 0.2), ((0,1), 0.1)];
+    elif angle > 23 and angle <= 68:
+        return [((-1,-1), 1.0), ((0,-1), 0.6), ((-1,0), 0.6), ((1,-1), 0.4), ((-1,1), 0.4), ((1,0), 0.2), ((0,1), 0.2), ((1,1), 0.1)];
+    elif angle > 68 and angle <= 113:
+        return [((-1,0), 1.0), ((-1,-1), 0.6), ((-1,1), 0.6), ((0,-1), 0.4), ((0,1), 0.4), ((1,-1), 0.2), ((1,1), 0.2), ((1,0), 0.1)];
+    elif angle > 113 and angle <= 158:
+        return [((-1,1), 1.0), ((-1,0), 0.6), ((0,1), 0.6), ((-1,-1), 0.4), ((1,1), 0.4), ((0,-1), 0.2), ((1,0), 0.2), ((1,-1), 0.1)];
+    elif angle > 158 and angle <= 203:
+        return [((0,1), 1.0), ((1,1), 0.6), ((-1,1), 0.6), ((1,0), 0.4), ((-1,0), 0.4), ((1,-1), 0.2), ((-1,-1), 0.2), ((0,-1), 0.1)];
+    elif angle > 203 and angle <= 248:
+        return [((1,1), 1.0), ((1,0), 0.6), ((0,1), 0.6), ((1,-1), 0.4), ((-1,1), 0.4), ((0,-1), 0.2), ((-1,0), 0.2), ((-1,-1), 0.1)];
+    elif angle > 248 and angle <= 292:
+        return [((1,0), 1.0), ((1,-1), 0.6), ((1,1), 0.6), ((0,1), 0.4), ((0,-1), 0.4), ((-1,1), 0.2), ((-1,-1), 0.2), ((-1,0), 0.1)];
     else:
-        return (nbhood.QUAD4, [nbhood.QUAD1, nbhood.QUAD3], nbhood.QUAD2)
+        return [((1,-1), 1.0), ((1,0), 0.6), ((0,-1), 0.6), ((1,1), 0.4), ((-1,-1), 0.4), ((0,1), 0.2), ((-1,0), 0.2), ((-1,1), 0.1)];
 
 
 # initialize the forest grid as a np array full of zeros
@@ -187,6 +167,8 @@ def update_wind_angle(val):
     global wind_angle
     wind_angle = wslider.val
     fig.canvas.draw_idle()
+
+wslider.on_changed(update_wind_angle)
 
 
 # Animation

@@ -17,6 +17,9 @@ class Stages(IntEnum):
 
 # TODO: update fire burn duration by creating different flame intensities and spreads
 
+# different percents of likelihood that a flame will catch onto the current square, assigned depending on wind direction and square position 
+flame_percent = [1.0, 0.6, 0.4, 0.2, 0.1]
+
 #  color list and map
 color_list = ["#400f15", "#4A6E1A", "#5FCA07", "#1fc506", "#ff7429"]
 cmap = colors.ListedColormap(color_list)
@@ -102,25 +105,24 @@ def assign_fire_with_wind(square, oldgrid, newgrid, angle):
 
 
 
-
 # get the quadrants that will impact the current square the most and less so
 def find_percents(angle):
     if angle > 338 or angle <= 23:
-        return [((0,-1), 1.0), ((1,-1), 0.6), ((-1,-1), 0.6), ((1,0), 0.4), ((-1,0), 0.4), ((1,1), 0.2), ((-1,1), 0.2), ((0,1), 0.1)];
+        return [((0,-1), flame_percent[0]), ((1,-1), flame_percent[1]), ((-1,-1), flame_percent[1]), ((1,0), flame_percent[2]), ((-1,0), flame_percent[2]), ((1,1), flame_percent[3]), ((-1,1), flame_percent[3]), ((0,1), flame_percent[4])];
     elif angle > 23 and angle <= 68:
-        return [((-1,-1), 1.0), ((0,-1), 0.6), ((-1,0), 0.6), ((1,-1), 0.4), ((-1,1), 0.4), ((1,0), 0.2), ((0,1), 0.2), ((1,1), 0.1)];
+        return [((-1,-1), flame_percent[0]), ((0,-1), flame_percent[1]), ((-1,0), flame_percent[1]), ((1,-1), flame_percent[2]), ((-1,1), flame_percent[2]), ((1,0), flame_percent[3]), ((0,1), flame_percent[3]), ((1,1), flame_percent[4])];
     elif angle > 68 and angle <= 113:
-        return [((-1,0), 1.0), ((-1,-1), 0.6), ((-1,1), 0.6), ((0,-1), 0.4), ((0,1), 0.4), ((1,-1), 0.2), ((1,1), 0.2), ((1,0), 0.1)];
+        return [((-1,0), flame_percent[0]), ((-1,-1), flame_percent[1]), ((-1,1), flame_percent[1]), ((0,-1), flame_percent[2]), ((0,1), flame_percent[2]), ((1,-1), flame_percent[3]), ((1,1), flame_percent[3]), ((1,0), flame_percent[4])];
     elif angle > 113 and angle <= 158:
-        return [((-1,1), 1.0), ((-1,0), 0.6), ((0,1), 0.6), ((-1,-1), 0.4), ((1,1), 0.4), ((0,-1), 0.2), ((1,0), 0.2), ((1,-1), 0.1)];
+        return [((-1,1), flame_percent[0]), ((-1,0), flame_percent[1]), ((0,1), flame_percent[1]), ((-1,-1), flame_percent[2]), ((1,1), flame_percent[2]), ((0,-1), flame_percent[3]), ((1,0), flame_percent[3]), ((1,-1), flame_percent[4])];
     elif angle > 158 and angle <= 203:
-        return [((0,1), 1.0), ((1,1), 0.6), ((-1,1), 0.6), ((1,0), 0.4), ((-1,0), 0.4), ((1,-1), 0.2), ((-1,-1), 0.2), ((0,-1), 0.1)];
+        return [((0,1), flame_percent[0]), ((1,1), flame_percent[1]), ((-1,1), flame_percent[1]), ((1,0), flame_percent[2]), ((-1,0), flame_percent[2]), ((1,-1), flame_percent[3]), ((-1,-1), flame_percent[3]), ((0,-1), flame_percent[4])];
     elif angle > 203 and angle <= 248:
-        return [((1,1), 1.0), ((1,0), 0.6), ((0,1), 0.6), ((1,-1), 0.4), ((-1,1), 0.4), ((0,-1), 0.2), ((-1,0), 0.2), ((-1,-1), 0.1)];
+        return [((1,1), flame_percent[0]), ((1,0), flame_percent[1]), ((0,1), flame_percent[1]), ((1,-1), flame_percent[2]), ((-1,1), flame_percent[2]), ((0,-1), flame_percent[3]), ((-1,0), flame_percent[3]), ((-1,-1), flame_percent[4])];
     elif angle > 248 and angle <= 292:
-        return [((1,0), 1.0), ((1,-1), 0.6), ((1,1), 0.6), ((0,1), 0.4), ((0,-1), 0.4), ((-1,1), 0.2), ((-1,-1), 0.2), ((-1,0), 0.1)];
+        return [((1,0), flame_percent[0]), ((1,-1), flame_percent[1]), ((1,1), flame_percent[1]), ((0,1), flame_percent[2]), ((0,-1), flame_percent[2]), ((-1,1), flame_percent[3]), ((-1,-1), flame_percent[3]), ((-1,0), flame_percent[4])];
     else:
-        return [((1,-1), 1.0), ((1,0), 0.6), ((0,-1), 0.6), ((1,1), 0.4), ((-1,-1), 0.4), ((0,1), 0.2), ((-1,0), 0.2), ((-1,1), 0.1)];
+        return [((1,-1), flame_percent[0]), ((1,0), flame_percent[1]), ((0,-1), flame_percent[1]), ((1,1), flame_percent[2]), ((-1,-1), flame_percent[2]), ((0,1), flame_percent[3]), ((-1,0), flame_percent[3]), ((-1,1), flame_percent[4])];
 
 
 # initialize the forest grid as a np array full of zeros
@@ -179,7 +181,7 @@ def animate(i):
 animate.grid = grid
 
 # interval in ms
-interval = 100
+interval = 80
 anim = animation.FuncAnimation(fig, animate, interval=interval, frames=200)
 # YIPPEE IT WORKED!!!AHHH
 plt.show()

@@ -2,15 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib import animation
-from matplotlib.widgets import Slider, Button
+from matplotlib.widgets import Slider
 from enum import IntEnum, Enum
 
 """
-TODO: explain what this model is
-- accounts for wind (but not intensity)
-- allows for wind to be turned off and on
+this model accounts for different intensities of the wind
 """
-
 # consts
 neighbors = [(0,1), (1,1), (1,0), (-1,0), (-1,-1), (0,-1), (-1,1), (1, -1)]
 
@@ -22,7 +19,8 @@ class Stages(IntEnum):
     ONFIRE = 4
 
 # different percents of likelihood that a flame will catch onto the current square, assigned depending on wind direction and square position 
-flame_percent = [1.0, 0.6, 0.4, 0.2, 0.1]
+flame_percent = [1.0, 1.0, 1.0, 1.0, 1.0]
+wind_impact = [0, 0.05, 0.12, 0.18, 0.2]
 
 #  color list and map
 color_list = ["#400f15", "#4A6E1A", "#5FCA07", "#1fc506", "#ff7429"]
@@ -39,11 +37,15 @@ p, f = 0.05, 0.0001
 # size of grid 
 sizex, sizey = 100, 100
 
+# probability of catching fire
+burn_risk = 0.7
+
 # wind direction, 0-359 degrees, with 0 degrees pointing east
 wind_angle = 0
 
-
-
+# wind intensity, between 0-5
+wind_change = False
+wind_intensity = 0
 
 # Create an update function 
 def update(grid):
@@ -80,37 +82,31 @@ def assign_tree(tree_val):
     return tree_val
 
 
-
-# ignore windspread if no wind is present
-def assign_fire_no_wind(square, oldgrid, newgrid):
-    y, x = square[0], square[1]
-    current_tree_cover = newgrid[y,x]
-    # Iterate through the neighbors of the cell, checking if any are on fire
-    for ny,nx in neighbors:
-        if abs(ny) == abs(nx) and np.random.random() <= 0.53:
-            continue
-        if oldgrid[y+ny, x+nx] == Stages.ONFIRE:
-            return Stages.ONFIRE
-    return current_tree_cover
-
-
-
-
-# account for windspread if wind is present
+# account for windspread
 def assign_fire_with_wind(square, oldgrid, newgrid, angle):
     # get current coordinates
     y, x = square[0], square[1]
     current_tree_cover = newgrid[y,x]
-    nb_percents = find_percents(angle)
+    if wind_change:
+        account_wind_intensity()
+    nb_percents = find_percents(angle, flame_percent)
     for entry in nb_percents:
         if oldgrid[y+entry[0][0], x+entry[0][1]] == Stages.ONFIRE and np.random.random() <= entry[1]:
             return Stages.ONFIRE    
     return current_tree_cover
 
-
+# add wind intensity
+def account_wind_intensity():
+    global flame_percent
+    global wind_change
+    flame_percent_new = []
+    for i in range(len(flame_percent)):
+        flame_percent_new.append(1.0 - (wind_impact[i]*wind_intensity))
+    flame_percent = flame_percent_new
+    wind_change = False
 
 # get the quadrants that will impact the current square the most and less so
-def find_percents(angle):
+def find_percents(angle, flame_percent):
     if angle > 338 or angle <= 23:
         return [((0,-1), flame_percent[0]), ((1,-1), flame_percent[1]), ((-1,-1), flame_percent[1]), ((1,0), flame_percent[2]), ((-1,0), flame_percent[2]), ((1,1), flame_percent[3]), ((-1,1), flame_percent[3]), ((0,1), flame_percent[4])];
     elif angle > 23 and angle <= 68:
@@ -127,10 +123,8 @@ def find_percents(angle):
         return [((1,0), flame_percent[0]), ((1,-1), flame_percent[1]), ((1,1), flame_percent[1]), ((0,1), flame_percent[2]), ((0,-1), flame_percent[2]), ((-1,1), flame_percent[3]), ((-1,-1), flame_percent[3]), ((-1,0), flame_percent[4])];
     else:
         return [((1,-1), flame_percent[0]), ((1,0), flame_percent[1]), ((0,-1), flame_percent[1]), ((1,1), flame_percent[2]), ((-1,-1), flame_percent[2]), ((0,1), flame_percent[3]), ((-1,0), flame_percent[3]), ((-1,1), flame_percent[4])];
+    
 
-
-
-# setting up the grid
 # initialize the forest grid as a np array full of zeros
 grid = np.zeros((sizex, sizey))
 
@@ -140,19 +134,20 @@ grid[1:sizey -1, 1:sizex-1] = np.random.random(size=(sizey-2, sizex-2)) < init_c
 # plot the grid
 fig = plt.figure(figsize=(12.8, 9.6)) #temp size
 ax = fig.add_subplot(111)
-
 # create room for a slider
 fig.subplots_adjust(bottom=0.20)
-
 # create sliders for p, f and wind_angle
-paxslider = fig.add_axes((0.25, 0.15, 0.50, 0.03))
+paxslider = fig.add_axes((0.25, 0.1, 0.50, 0.03))
 pslider = Slider(ax=paxslider, label="p", valmin=0.00, valmax=0.1, valinit=0.05)
 
-faxslider = fig.add_axes((0.25, 0.1, 0.50, 0.03))
+faxslider = fig.add_axes((0.25, 0.075, 0.50, 0.03))
 fslider = Slider(ax=faxslider, label="f", valmin=0.00, valmax=0.005, valinit=0.0001)
 
 waxslider = fig.add_axes((0.25, 0.05, 0.50, 0.03))
 wslider = Slider(ax=waxslider, label="wind angle", valmin=0, valmax=359, valinit=0)
+
+wislider = fig.add_axes((0.25, 0.025, 0.50, 0.03))
+wislider = Slider(ax=wislider, label="wind intensity", valmin=0, valmax=5, valinit=0, valstep=1)
 
 ax.set_axis_off()
 im = ax.imshow(grid, cmap, norm=norm)
@@ -180,19 +175,14 @@ def update_wind_angle(val):
 
 wslider.on_changed(update_wind_angle)
 
+def update_wind_intensity(val):
+    global wind_intensity
+    global wind_change
+    wind_intensity = wislider.val
+    wind_change = True
+    fig.canvas.draw_idle
 
-# button to turn off and on the wind animation
-buttonax = fig.add_axes((0.8, 0.025, 0.1, 0.04))
-button = Button(ax=buttonax, label="Wind Off", hovercolor='0.975')
-
-def turn_off_wind(val):
-    global wind_angle
-    if wind_angle == None:
-        wind_angle = 0
-    else:
-        wind_angle = None
-
-button.on_clicked(turn_off_wind)
+wislider.on_changed(update_wind_intensity)
 
 # Animation
 def animate(i):
@@ -206,3 +196,5 @@ interval = 80
 anim = animation.FuncAnimation(fig, animate, interval=interval, frames=200)
 
 plt.show()
+
+

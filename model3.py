@@ -57,7 +57,7 @@ hardwood_burn_risk = 0.4
 temp_burn_risk = [0.2, 0.4, 0.7, 1.0]
 
 # dormancy rate
-dormant_rate = 0.05
+dormant_rate = 0.02
 
 # probability of a tree dying
 d = 0.03
@@ -248,16 +248,16 @@ paxslider = fig.add_axes((0.25, 0.1, 0.50, 0.03))
 pslider = Slider(ax=paxslider, label="p", valmin=0.00, valmax=0.1, valinit=0.05)
 
 # d slider
-daxslider = fig.add_axes((0.25, 0.05, 0.50, 0.03))
-dslider = Slider(ax=daxslider, label="d", valmin=0.00, valmax=0.1, valinit=0.03)
+daxslider = fig.add_axes((0.25, 0.06, 0.50, 0.03))
+dslider = Slider(ax=daxslider, label="d", valmin=0.00, valmax=0.1, valinit=0.01)
 
 # wind angle slider
-waxslider = fig.add_axes((0.25, 0.075, 0.50, 0.03))
+waxslider = fig.add_axes((0.25, 0.08, 0.50, 0.03))
 wslider = Slider(ax=waxslider, label="wind angle", valmin=0, valmax=359, valinit=0)
 
 # wind intensity slider
-wislider = fig.add_axes((0.25, 0.025, 0.50, 0.03))
-wislider = Slider(ax=wislider, label="wind intensity", valmin=0, valmax=5, valinit=0, valstep=1)
+waxis = fig.add_axes((0.25, 0.04, 0.50, 0.03))
+wislider = Slider(ax=waxis, label="wind intensity", valmin=0, valmax=5, valinit=0, valstep=1)
 
 ax.set_axis_off()
 im = ax.imshow(grid, cmap, norm=norm)

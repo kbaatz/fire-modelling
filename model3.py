@@ -56,6 +56,8 @@ conifer_burn_risk = 1.0
 hardwood_burn_risk = 0.4
 temp_burn_risk = [0.2, 0.4, 0.7, 1.0]
 
+# dormancy rate
+dormant_rate = 0.05
 
 # probability of a tree dying
 d = 0.03
@@ -69,17 +71,16 @@ sx, sy = 100, 100
 # set the action initially to grow
 # wind angle, 0-359 degrees, with 0 degrees pointing east
 wind_angle = 0
-flame_percent = [1.0, 1.0, 1.0, 1.0, 1.0] #TODO: will add in intensity
+flame_percent = [1.0, 1.0, 1.0, 1.0, 1.0] 
 wind_impact = [0, 0.05, 0.12, 0.18, 0.2]
 
 # wind intensity, between 0-5
 wind_change = False
 wind_intensity = 0
 
-
 # -------------------------------------------------------------------------------------------------------------------------
 # update growth
-def grow(grid):
+def grow(grid, dormant_grid):
 
     # fill new grid with zeros
     new_grid = np.zeros((sy,sx))
@@ -103,12 +104,14 @@ def grow(grid):
                 new_grid[iy,ix] = select_tree((iy,ix), num_conifers, num_hardwood)
 
             # if there is a tree, see if it decomposes or not
-            if grid[iy,ix] == Trees.CONIFER or grid[iy,ix] == Trees.HARDWOOD:
+            if grid[iy,ix] == Trees.CONIFER or grid[iy,ix] == Trees.HARDWOOD or grid[iy,ix] == Trees.DORMANT_CONIFER:
                 new_grid[iy,ix] = grid[iy,ix]
+                if new_grid[iy,ix] == Trees.DORMANT_CONIFER:
+                    new_grid[iy,ix] = Trees.CONIFER
                 if np.random.random() <= d:
                     new_grid[iy,ix] = Trees.DECOMPOSED
 
-    return new_grid
+    return new_grid, dormant_grid
 
 
 
@@ -131,21 +134,23 @@ def select_tree(square, conifers, hardwoods):
 
 
 # update method, setting spark : this stops the growth method and starts the flame method
-def burn(grid):
+def burn(grid, dormant_grid):
     # fill new grid with zeros
     new_grid = np.zeros((sy, sx))
 
     # iterate through cells
+    new_grid[dormant_grid] = Trees.DORMANT_CONIFER
+
     for ix in range(1, sx-1):
         for iy in range(1, sx-1):
             if grid[iy, ix] > Fires.FIRE1:
                 new_grid[iy, ix] = get_next_fire(grid[iy, ix])
             if grid[iy, ix] == Trees.CONIFER or grid[iy, ix] == Trees.HARDWOOD:
                 new_grid[iy, ix] = grid[iy, ix]
-                new_grid[iy, ix] = fire_chance((iy, ix), new_grid, grid)
+                new_grid[iy, ix] = fire_chance((iy, ix), new_grid, grid, dormant_grid)
                 
 
-    return new_grid
+    return new_grid, dormant_grid
 
 
 
@@ -154,7 +159,7 @@ def get_next_fire(current_fire):
 
 
 
-def fire_chance(square, new_grid, old_grid):
+def fire_chance(square, new_grid, old_grid, dormant_grid):
     y, x = square[0], square[1]
     current_tree_type = new_grid[y,x]
     species_risk = conifer_burn_risk if old_grid[y,x] == Trees.CONIFER else hardwood_burn_risk
@@ -164,7 +169,12 @@ def fire_chance(square, new_grid, old_grid):
     for entry in nb_percents:
         temp_risk = get_temp(old_grid[y+entry[0][0], x+entry[0][1]])
         if np.random.random() <= species_risk * entry[1] * temp_risk:
-            return Fires.FIRE4 if current_tree_type == Trees.CONIFER else Fires.FIRE3
+            if current_tree_type == Trees.CONIFER:
+                if np.random.random() <= dormant_rate:
+                    dormant_grid[y,x] = True
+                return Fires.FIRE4
+            return Fires.FIRE3
+            # return Fires.FIRE4 if current_tree_type == Trees.CONIFER else Fires.FIRE3
 
     return current_tree_type
 
@@ -173,7 +183,7 @@ def fire_chance(square, new_grid, old_grid):
 def get_temp(temperature):
     if temperature <= 4:
         return 0
-    return temp_burn_risk[int(temperature-4)]
+    return temp_burn_risk[int(temperature-5)]
 
 
 # add wind intensity
@@ -210,6 +220,9 @@ def find_percents(angle, flame_percent):
 
 # --------------------------------------------------------------------------------------------------------------------------
 action = grow
+
+# dormant tree grid
+dormant_grid = np.zeros((sy,sx), dtype=bool)
 
 # setting up grid
 grid = np.zeros((sy, sx))
@@ -301,9 +314,10 @@ button.on_clicked(switch_action)
 # animation
 def animate(i):
     im.set_data(animate.grid)
-    animate.grid = action(animate.grid)
+    animate.grid, animate.dormant_grid = action(animate.grid, animate.dormant_grid)
 
 animate.grid = grid
+animate.dormant_grid = dormant_grid
 
 # interval in ms
 interval = 80

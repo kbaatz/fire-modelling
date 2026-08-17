@@ -27,20 +27,21 @@ class Trees(IntEnum):
     CONIFER = 1
     HARDWOOD = 2
     DECOMPOSED = 3
+    DORMANT_CONIFER = 4
 
 # fire types (categorized by intensity)
 class Fires(IntEnum):
-    FIRE1 = 4
-    FIRE2 = 5
-    FIRE3 = 6
-    FIRE4 = 7
+    FIRE1 = 5
+    FIRE2 = 6
+    FIRE3 = 7
+    FIRE4 = 8
 
 # initial fraction of a forest occupied by each tree
 init_hardwood_coverage = 0.05
 init_conifer_coverage = 0.05
 
 # color list and map
-color_list = ["#400f15", "#065C23", "#78D60C", "#40210f", "#40210f", "#c04530", "#ff7429", "#ffb938"]
+color_list = ["#400f15", "#065C23", "#78D60C", "#40210f", "#001b06", "#40210f", "#c04530", "#ff7429", "#ffb938"]
 cmap = colors.ListedColormap(color_list)
 boundaries = [0,1,2,3,4,5,6, 7]
 norm = colors.BoundaryNorm(boundaries, cmap.N)
@@ -52,8 +53,9 @@ hardwood_growth = 2/5
 
 # probability of burning
 conifer_burn_risk = 1.0
-hardwood_burn_risk = 0.6
+hardwood_burn_risk = 0.4
 temp_burn_risk = [0.2, 0.4, 0.7, 1.0]
+
 
 # probability of a tree dying
 d = 0.03
@@ -67,8 +69,12 @@ sx, sy = 100, 100
 # set the action initially to grow
 # wind angle, 0-359 degrees, with 0 degrees pointing east
 wind_angle = 0
-flame_percent = [1.0, 0.6, 0.4, 0.2, 0.1] #TODO: will add in intensity
+flame_percent = [1.0, 1.0, 1.0, 1.0, 1.0] #TODO: will add in intensity
+wind_impact = [0, 0.05, 0.12, 0.18, 0.2]
 
+# wind intensity, between 0-5
+wind_change = False
+wind_intensity = 0
 
 
 # -------------------------------------------------------------------------------------------------------------------------
@@ -152,6 +158,8 @@ def fire_chance(square, new_grid, old_grid):
     y, x = square[0], square[1]
     current_tree_type = new_grid[y,x]
     species_risk = conifer_burn_risk if old_grid[y,x] == Trees.CONIFER else hardwood_burn_risk
+    if wind_change:
+        account_wind_intensity()
     nb_percents = find_percents(wind_angle, flame_percent)
     for entry in nb_percents:
         temp_risk = get_temp(old_grid[y+entry[0][0], x+entry[0][1]])
@@ -161,12 +169,22 @@ def fire_chance(square, new_grid, old_grid):
     return current_tree_type
 
 
-
     
 def get_temp(temperature):
-    if temperature <= 3:
+    if temperature <= 4:
         return 0
     return temp_burn_risk[int(temperature-4)]
+
+
+# add wind intensity
+def account_wind_intensity():
+    global flame_percent
+    global wind_change
+    flame_percent_new = []
+    for i in range(len(flame_percent)):
+        flame_percent_new.append(1.0 - (wind_impact[i]*wind_intensity))
+    flame_percent = flame_percent_new
+    wind_change = False
 
 
 # get the quadrants that will impact the current square the most and less so
@@ -212,14 +230,21 @@ ax = fig.add_subplot(111)
 fig.subplots_adjust(bottom=0.20)
 
 # create sliders 
+# p slider
 paxslider = fig.add_axes((0.25, 0.1, 0.50, 0.03))
 pslider = Slider(ax=paxslider, label="p", valmin=0.00, valmax=0.1, valinit=0.05)
 
+# d slider
 daxslider = fig.add_axes((0.25, 0.05, 0.50, 0.03))
 dslider = Slider(ax=daxslider, label="d", valmin=0.00, valmax=0.1, valinit=0.03)
 
+# wind angle slider
 waxslider = fig.add_axes((0.25, 0.075, 0.50, 0.03))
 wslider = Slider(ax=waxslider, label="wind angle", valmin=0, valmax=359, valinit=0)
+
+# wind intensity slider
+wislider = fig.add_axes((0.25, 0.025, 0.50, 0.03))
+wislider = Slider(ax=wislider, label="wind intensity", valmin=0, valmax=5, valinit=0, valstep=1)
 
 ax.set_axis_off()
 im = ax.imshow(grid, cmap, norm=norm)
@@ -246,9 +271,18 @@ def update_wind_angle(val):
 
 wslider.on_changed(update_wind_angle)
 
+def update_wind_intensity(val):
+    global wind_intensity
+    global wind_change
+    wind_intensity = wislider.val
+    wind_change = True
+    fig.canvas.draw_idle
+
+wislider.on_changed(update_wind_intensity)
+
 
 # button to switch to a spark
-buttonax = fig.add_axes((0.8, 0.025, 0.1, 0.04))
+buttonax = fig.add_axes((0.8, 0.015, 0.1, 0.04))
 button = Button(ax=buttonax, label="Burn", hovercolor='0.975')
 
 def switch_action(val):

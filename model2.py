@@ -59,10 +59,7 @@ def update(grid):
                 new_grid[iy,ix] = Stages.TREE1
             if grid[iy,ix] >= Stages.TREE1 and grid[iy,ix] < Stages.ONFIRE:
                 new_grid[iy,ix] = assign_tree(grid[iy,ix])
-                if wind_angle == None:
-                    new_grid[iy, ix] = assign_fire_no_wind((iy,ix), grid, new_grid)
-                else:
-                    new_grid[iy, ix] = assign_fire_with_wind((iy,ix), grid, new_grid, wind_angle)
+                new_grid[iy, ix] = assign_fire_with_wind((iy,ix), grid, new_grid, wind_angle)
                 if new_grid[iy,ix] >= Stages.TREE1 and new_grid[iy,ix] < Stages.ONFIRE:
                     if np.random.random() <= f:
                          new_grid[iy,ix] = Stages.ONFIRE

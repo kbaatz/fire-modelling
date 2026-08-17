@@ -7,8 +7,8 @@ from scipy import ndimage
 from enum import IntEnum, Enum
 
 """
-this model will account for wind intensity, wind direction and tree type,and topology
-the model will have three types of growth: brush, cedar and other sap rich trees, and conifers
+this model will account for wind intensity, wind direction and tree type (TBD topology)
+the model will have two types of growth: hardwood trees, and conifers
 the model will have an option to grow the trees and after a selected amount of time you can set the direction of the wind and launch a spark from the middle
 """
 
@@ -50,6 +50,11 @@ norm = colors.BoundaryNorm(boundaries, cmap.N)
 # best approx I have is that hardwoods grow at 2/3 the rate of conifers on average
 hardwood_growth = 2/5
 
+# probability of burning
+conifer_burn_risk = 1.0
+hardwood_burn_risk = 0.6
+temp_burn_risk = [0.2, 0.4, 0.7, 1.0]
+
 # probability of a tree dying
 d = 0.03
 
@@ -60,7 +65,9 @@ p = 0.05
 sx, sy = 100, 100
 
 # set the action initially to grow
-# TODO: ADD WIND
+# wind angle, 0-359 degrees, with 0 degrees pointing east
+wind_angle = 0
+flame_percent = [1.0, 0.6, 0.4, 0.2, 0.1] #TODO: will add in intensity
 
 
 
@@ -129,7 +136,7 @@ def burn(grid):
                 new_grid[iy, ix] = get_next_fire(grid[iy, ix])
             if grid[iy, ix] == Trees.CONIFER or grid[iy, ix] == Trees.HARDWOOD:
                 new_grid[iy, ix] = grid[iy, ix]
-                new_grid[iy, ix] = fire_chance((iy, ix))
+                new_grid[iy, ix] = fire_chance((iy, ix), new_grid, grid)
                 
 
     return new_grid
@@ -137,14 +144,50 @@ def burn(grid):
 
 
 def get_next_fire(current_fire):
-    return current_fire.value - 1;
+    return current_fire - 1;
 
 
 
-def fire_chance(square):
+def fire_chance(square, new_grid, old_grid):
     y, x = square[0], square[1]
-    
+    current_tree_type = new_grid[y,x]
+    species_risk = conifer_burn_risk if old_grid[y,x] == Trees.CONIFER else hardwood_burn_risk
+    nb_percents = find_percents(wind_angle, flame_percent)
+    for entry in nb_percents:
+        temp_risk = get_temp(old_grid[y+entry[0][0], x+entry[0][1]])
+        if np.random.random() <= species_risk * entry[1] * temp_risk:
+            return Fires.FIRE4 if current_tree_type == Trees.CONIFER else Fires.FIRE3
 
+    return current_tree_type
+
+
+
+    
+def get_temp(temperature):
+    if temperature <= 3:
+        return 0
+    return temp_burn_risk[int(temperature-4)]
+
+
+# get the quadrants that will impact the current square the most and less so
+def find_percents(angle, flame_percent):
+    if angle > 338 or angle <= 23:
+        return [((0,-1), flame_percent[0]), ((1,-1), flame_percent[1]), ((-1,-1), flame_percent[1]), ((1,0), flame_percent[2]), ((-1,0), flame_percent[2]), ((1,1), flame_percent[3]), ((-1,1), flame_percent[3]), ((0,1), flame_percent[4])];
+    elif angle > 23 and angle <= 68:
+        return [((-1,-1), flame_percent[0]), ((0,-1), flame_percent[1]), ((-1,0), flame_percent[1]), ((1,-1), flame_percent[2]), ((-1,1), flame_percent[2]), ((1,0), flame_percent[3]), ((0,1), flame_percent[3]), ((1,1), flame_percent[4])];
+    elif angle > 68 and angle <= 113:
+        return [((-1,0), flame_percent[0]), ((-1,-1), flame_percent[1]), ((-1,1), flame_percent[1]), ((0,-1), flame_percent[2]), ((0,1), flame_percent[2]), ((1,-1), flame_percent[3]), ((1,1), flame_percent[3]), ((1,0), flame_percent[4])];
+    elif angle > 113 and angle <= 158:
+        return [((-1,1), flame_percent[0]), ((-1,0), flame_percent[1]), ((0,1), flame_percent[1]), ((-1,-1), flame_percent[2]), ((1,1), flame_percent[2]), ((0,-1), flame_percent[3]), ((1,0), flame_percent[3]), ((1,-1), flame_percent[4])];
+    elif angle > 158 and angle <= 203:
+        return [((0,1), flame_percent[0]), ((1,1), flame_percent[1]), ((-1,1), flame_percent[1]), ((1,0), flame_percent[2]), ((-1,0), flame_percent[2]), ((1,-1), flame_percent[3]), ((-1,-1), flame_percent[3]), ((0,-1), flame_percent[4])];
+    elif angle > 203 and angle <= 248:
+        return [((1,1), flame_percent[0]), ((1,0), flame_percent[1]), ((0,1), flame_percent[1]), ((1,-1), flame_percent[2]), ((-1,1), flame_percent[2]), ((0,-1), flame_percent[3]), ((-1,0), flame_percent[3]), ((-1,-1), flame_percent[4])];
+    elif angle > 248 and angle <= 292:
+        return [((1,0), flame_percent[0]), ((1,-1), flame_percent[1]), ((1,1), flame_percent[1]), ((0,1), flame_percent[2]), ((0,-1), flame_percent[2]), ((-1,1), flame_percent[3]), ((-1,-1), flame_percent[3]), ((-1,0), flame_percent[4])];
+    else:
+        return [((1,-1), flame_percent[0]), ((1,0), flame_percent[1]), ((0,-1), flame_percent[1]), ((1,1), flame_percent[2]), ((-1,-1), flame_percent[2]), ((0,1), flame_percent[3]), ((-1,0), flame_percent[3]), ((-1,1), flame_percent[4])];
+    
 
 
 # --------------------------------------------------------------------------------------------------------------------------
@@ -175,6 +218,9 @@ pslider = Slider(ax=paxslider, label="p", valmin=0.00, valmax=0.1, valinit=0.05)
 daxslider = fig.add_axes((0.25, 0.05, 0.50, 0.03))
 dslider = Slider(ax=daxslider, label="d", valmin=0.00, valmax=0.1, valinit=0.03)
 
+waxslider = fig.add_axes((0.25, 0.075, 0.50, 0.03))
+wslider = Slider(ax=waxslider, label="wind angle", valmin=0, valmax=359, valinit=0)
+
 ax.set_axis_off()
 im = ax.imshow(grid, cmap, norm=norm)
 
@@ -193,6 +239,13 @@ def update_d(val):
 
 dslider.on_changed(update_d)
 
+def update_wind_angle(val):
+    global wind_angle
+    wind_angle = wslider.val
+    fig.canvas.draw_idle()
+
+wslider.on_changed(update_wind_angle)
+
 
 # button to switch to a spark
 buttonax = fig.add_axes((0.8, 0.025, 0.1, 0.04))
@@ -202,9 +255,9 @@ def switch_action(val):
     global action
     if action == grow:
         # create an initial patch to burn
-        grid[sy/2, sx/2] = Fires.FIRE4
-        grid[sy/2-1, sx/2-1] = Fires.FIRE4
-        grid[sy/2+1, sx/2+1] = Fires.FIRE4
+        animate.grid[int(sy/2), int(sx/2)] = Fires.FIRE4
+        animate.grid[int(sy/2)+1, int(sx/2)+1] = Fires.FIRE4
+        animate.grid[int(sy/2)-1, int(sx/2)-1] = Fires.FIRE4
         action = burn
     else:
         action = grow

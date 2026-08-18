@@ -6,7 +6,14 @@ from matplotlib.widgets import Slider
 from enum import IntEnum, Enum
 
 """
-this model accounts for different intensities of the wind
+This program simulates a Drossel and Schwabl model of forest fires. In this iteration there are three states that a cell can be:
+
+1. Empty
+2. Occupied by a tree
+3. On fire
+
+A tree grows in a cell with the probability of p and lightning strikes, igniting a cell, with the probability of f. This model also allows for users
+to observe the affects of wind angles and different wind intensities.
 """
 # consts
 neighbors = [(0,1), (1,1), (1,0), (-1,0), (-1,-1), (0,-1), (-1,1), (1, -1)]

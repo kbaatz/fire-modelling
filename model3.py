@@ -7,9 +7,19 @@ from scipy import ndimage
 from enum import IntEnum, Enum
 
 """
-this model will account for wind intensity, wind direction and tree type (TBD topology)
-the model will have two types of growth: hardwood trees, and conifers
-the model will have an option to grow the trees and after a selected amount of time you can set the direction of the wind and launch a spark from the middle
+This program simulates a growth and burn cycle of a forest. Each cell is in one of five states:
+
+1. Empty
+2. Occupied by a tree (a conifer or a hardwood)
+3. Occupied by a dormant tree
+4. On fire
+5. Decomposed
+
+The probability of a tree growing vary for conifers and hardwoods to reflect the relative difference in their growth speeds. Similarly,
+the probability of catching fire and the intensity of the flame vary depending on the type of tree that has been ignited. When a conifer burns,
+there is a chance that it may not die off but rather become a "dormant tree", this reflects conifers' serotiny, a series of traits that allow for thier
+seeds to be released and thrive after exposure to high heats. In the next growth cycle, dormant conifers grow back more quickly. This model also
+allows the user to add wind and aims to simulate mosaic burn patterns.
 """
 
 
